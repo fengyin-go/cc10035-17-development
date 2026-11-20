@@ -73,7 +73,35 @@ class ProbeSelectorService(BaseModuleService):
             if r.get("目标页面") == page_uri
         ]
 
+    def consume_trial_package(self, package_id: str) -> dict[str, Any]:
+        """读取探针试跑配置数据包，按样本页触发快照并回写字段候选。被模板规则消费。"""
+        from app.services.probe_package import PACKAGE_STORE, PackageValidationError, decode_package
+        from app.services.probe_trial import run_trial
+
+        data = PACKAGE_STORE.load(package_id)
+        if data is None:
+            return {"ok": False, "reason": f"数据包 {package_id} 不存在或未完整落盘"}
+        try:
+            decoded = decode_package(data)
+        except PackageValidationError as exc:
+            return {"ok": False, "reason": str(exc)}
+        record = run_trial(decoded, source="probe_selector")
+        return {
+            "ok": True,
+            "package_id": package_id,
+            "trial_run_id": record["run_id"],
+            "snapshot_ids": [item["snapshot_code"] for item in record["snapshots"]],
+            "verified_count": record["writeback"]["verified_count"],
+            "pending_count": record["writeback"]["pending_count"],
+        }
+
     def domain_snapshot(self) -> dict[str, Any]:
         base = super().domain_snapshot()
         base["probe_health"] = self.compute_probe_health()
+        from app.services.probe_trial import LEDGER
+        base["trial_link"] = {
+            "field_candidates": len(LEDGER.list()),
+            "verified": len(LEDGER.list(status="已验证")),
+            "pending": len(LEDGER.list(status="待验证")),
+        }
         return base

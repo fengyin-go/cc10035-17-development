@@ -6,6 +6,14 @@
         <p class="page-desc">{{ meta.desc }}</p>
       </div>
       <div class="page-actions">
+        <RouterLink
+          v-if="meta.key === 'template_rule' || meta.key === 'probe_selector' || meta.key === 'page_snapshot'"
+          class="btn"
+          data-testid="goto-probe-trial"
+          to="/probe-trial"
+        >
+          去探针试跑
+        </RouterLink>
         <button class="btn primary" data-testid="open-create" type="button" @click="openCreate">
           登记{{ meta.entity }}
         </button>

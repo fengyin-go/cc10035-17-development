@@ -1,7 +1,6 @@
 """模板规则领域服务：管理站点级字段抽取模板。"""
 from __future__ import annotations
 
-import hashlib
 from typing import Any
 
 from app.services.base import BaseModuleService
@@ -81,6 +80,28 @@ class TemplateRuleService(BaseModuleService):
             for r in store.rows(self.MODULE)
             if r.get("status") == "已发布"
         ]
+
+    def build_trial_package(
+        self,
+        template_ids: list[int] | None = None,
+        *,
+        quota_per_page: int = 1,
+        all_templates: bool = False,
+    ) -> dict[str, Any]:
+        """把模板的探针候选导出为采集端可试跑的数据包，供探针试跑模块交付。"""
+        from app.services.probe_package import PackageValidationError
+        from app.services.probe_package_builder import build_package, package_summary
+
+        ids = list(template_ids or [])
+        try:
+            package = build_package(
+                template_ids=ids,
+                all_templates=all_templates,
+                quota_per_page=quota_per_page,
+            )
+        except PackageValidationError as exc:
+            return {"ok": False, "reason": str(exc)}
+        return package_summary(package)
 
     def domain_snapshot(self) -> dict[str, Any]:
         base = super().domain_snapshot()
